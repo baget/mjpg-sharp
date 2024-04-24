@@ -18,7 +18,7 @@ This project implements an MJPEG streamer using C# and OpenCvSharp. It allows yo
 
 1. Clone this repository.
 2. Build the project using Visual Studio 2022 or `dotnet` command line.
-3. Run the compiled executable.
+3. Run the compiled executable. (as elevated admin (since `HttpListener` requried it))
 
 ## HTTP Endpoints
 
