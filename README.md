@@ -1,6 +1,7 @@
 # Mjpg# (MJpg-Sharp) - A quick and dirty .NET MJPEG Streamer
 
 [![Tech Stack](https://skillicons.dev/icons?i=cs,dotnet,opencv,visualstudio)](https://skillicons.dev)
+[![GitHub license](https://img.shields.io/github/license/Naereen/StrapDown.js.svg)](https://github.com/baget/zeptocom/blob/master/LICENSE)
 
 This project implements an MJPEG streamer using C# and OpenCvSharp. It allows you to stream video frames from a camera over HTTP, making it accessible through a web browser or other clients.
 
