@@ -34,8 +34,14 @@ This project implements an MJPEG streamer using C# and OpenCvSharp. It allows yo
 2. Execute the compiled binary as elevated admin (since `HttpListener` requried it)
 3. Open a web browser and navigate to `http://localhost:8080` to view the MJPEG stream.
 
+### Command Line
+
+`--port / -p` - Set http port to listen to
+`--index / -i` - Set camera index number
+
 ### Running as Non Elevated Admin
 https://stackoverflow.com/questions/4019466/httplistener-access-denied
+
 
 ## License
 
