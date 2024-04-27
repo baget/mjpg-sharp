@@ -27,128 +27,170 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using CommandLine;
 using OpenCvSharp;
 
-// Listing Port 
-const int PORT = 8080;
-
-// Binding Address
-string ALL_ADDR = $"http://*:{PORT}/";
-
-// Initialize camera
-using var capture = new VideoCapture(0); // Use the appropriate camera index
-var running = true;
-
-// Set up HTTP server
-var listener = new HttpListener();
-listener.Prefixes.Add(ALL_ADDR);
-listener.Start();
-
-Console.WriteLine($"MJPG# - .NET MJPEG Streamer - Server started. Listening on Port {PORT}");
-
-Console.CancelKeyPress += Console_CancelKeyPress;
-
-while (running)
+namespace MJPG_Sharp
 {
-    var context = await listener.GetContextAsync();
-
-    if (context == null)
-    { 
-        break; 
-    }
-
-    var thread = new Thread(() =>
+    public class Options
     {
-        switch (context.Request.Url.LocalPath)
+        // Default HTTP Port to listen
+        public const int DEFAULT_PORT = 8080;
+
+        // Default Camera Index to use.
+        public const int DEFAULT_INDEX = 0;
+
+        [Option('p', "port", Required = false, HelpText = "Set http port to listen to", Default = DEFAULT_PORT)]
+        public int Port { get; set; }
+
+        [Option('i', "index", Required = false, HelpText = "Set camera index number", Default = DEFAULT_INDEX)]
+        public int CameraIndex { get; set; }
+
+    };
+
+    static class Program
+    {
+        static void Main(string[] args)
         {
-            case "/snapshot":
+            try
+            {
+                var result = Parser.Default.ParseArguments<Options>(args);
+
+                result.WithParsed(options =>
                 {
-                    // Read a frame from the camera
-                    using var frame = new Mat();
-                    capture.Read(frame);
-
-                    // Encode frame to JPEG
-                    var jpegBytes = frame.ToBytes(".jpg");
-
-                    // Send response
-                    context.Response.ContentType = "image/jpeg";
-                    context.Response.OutputStream.Write(jpegBytes);
-                    break;
-                }
-
-            case "/stream":
+                    StartCapturing(options.Port, options.CameraIndex);
+                }).WithNotParsed(errors =>
                 {
-                    try
-                    {
-                        // Set the content type for the MJPEG stream (Multipart)
-                        context.Response.ContentType = "multipart/x-mixed-replace; boundary=image-boundary";
+                });
 
-
-                        // Continuously send frames
-                        while (true)
-                        {
-                            // Read a frame from the camera
-                            using var frame = new Mat();
-                            capture.Read(frame);
-
-                            // Encode frame to JPEG
-                            var jpegBytes = frame.ToBytes(".jpg");
-
-                            // Send the a frame
-                            var boundary = Encoding.ASCII.GetBytes("\r\n--image-boundary\r\n");
-                            context.Response.OutputStream.Write(boundary);
-                            context.Response.OutputStream.Write(Encoding.ASCII.GetBytes("Content-Type: image/jpeg\r\n\r\n"));
-                            context.Response.OutputStream.Write(jpegBytes);
-                        }
-                    }
-                    catch
-                    {
-
-                    }
-                    finally
-                    {
-                        context.Response.Close();
-                    }
-
-                    break;
-                }
-
-            case "/":
-                {
-                    var html = @"
-                    <!DOCTYPE html>
-                    <html lang=""en"">
-                    <head>
-                        <meta charset=""UTF-8"">
-                        <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
-                        <title>MJPEG Stream</title>
-                    </head>
-                    <body>
-                        <h1>MJPEG Stream</h1>
-                        <img src=""/stream"" alt=""MJPEG Stream"">
-                    </body>
-                    </html>";
-
-                    var htmlBytes = Encoding.UTF8.GetBytes(html);
-                    context.Response.ContentType = "text/html";
-                    context.Response.OutputStream.Write(htmlBytes);
-                    context.Response.Close();
-                    break;
-                }
-
-            default:
-                context.Response.StatusCode = 404;
-                context.Response.Close();
-                break;
+                return;
+            }
+            catch (Exception e)
+            {
+                Console.Error.WriteLine($"Exception - {e.Message}");
+            }
         }
-    });
 
-    thread.Start();
+        private static void StartCapturing(int listPort, int cameraIndex)
+        {
+            // Initialize camera
+            var capture = new VideoCapture(cameraIndex); // Use the appropriate camera index
+            var running = true;
+
+            string ListenAddress = $"http://*:{listPort}/";
+
+            // Set up HTTP server
+            var listener = new HttpListener();
+            listener.Prefixes.Add(ListenAddress);
+            listener.Start();
+
+            Console.WriteLine($"MJPG# - .NET MJPEG Streamer - Server started. Listening on Port {listPort}, Camera Index {cameraIndex}");
+
+            // Setting Ctrl+C/Ctrl+Break handler
+            Console.CancelKeyPress += (object? sender, ConsoleCancelEventArgs e) => { running = false; };
+
+            while (running)
+            {
+                var context = listener.GetContext();
+
+                if (context == null || context.Request.Url == null)
+                {
+                    break;
+                }
+
+                var thread = new Thread(() =>
+                {
+                    switch (context.Request.Url.LocalPath)
+                    {
+                        case "/snapshot":
+                            {
+                                // Read a frame from the camera
+                                using var frame = new Mat();
+                                capture.Read(frame);
+
+                                // Encode frame to JPEG
+                                var jpegBytes = frame.ToBytes(".jpg");
+
+                                // Send response
+                                context.Response.ContentType = "image/jpeg";
+                                context.Response.OutputStream.Write(jpegBytes);
+                                break;
+                            }
+
+                        case "/stream":
+                            {
+                                try
+                                {
+                                    // Set the content type for the MJPEG stream (Multipart)
+                                    context.Response.ContentType = "multipart/x-mixed-replace; boundary=image-boundary";
+
+
+                                    // Continuously send frames
+                                    while (true)
+                                    {
+                                        // Read a frame from the camera
+                                        using var frame = new Mat();
+                                        capture.Read(frame);
+
+                                        // Encode frame to JPEG
+                                        var jpegBytes = frame.ToBytes(".jpg");
+
+                                        // Send the a frame
+                                        var boundary = Encoding.ASCII.GetBytes("\r\n--image-boundary\r\n");
+                                        context.Response.OutputStream.Write(boundary);
+                                        context.Response.OutputStream.Write(Encoding.ASCII.GetBytes("Content-Type: image/jpeg\r\n\r\n"));
+                                        context.Response.OutputStream.Write(jpegBytes);
+                                    }
+                                }
+                                catch
+                                {
+
+                                }
+                                finally
+                                {
+                                    context.Response.Close();
+                                }
+
+                                break;
+                            }
+
+                        case "/":
+                            {
+                                var html = @"
+                            <!DOCTYPE html>
+                            <html lang=""en"">
+                            <head>
+                                <meta charset=""UTF-8"">
+                                <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
+                                <title>MJPEG Stream</title>
+                            </head>
+                            <body>
+                                <h1>MJPEG Stream</h1>
+                                <img src=""/stream"" alt=""MJPEG Stream"">
+                            </body>
+                            </html>";
+
+                                var htmlBytes = Encoding.UTF8.GetBytes(html);
+                                context.Response.ContentType = "text/html";
+                                context.Response.OutputStream.Write(htmlBytes);
+                                context.Response.Close();
+                                break;
+                            }
+
+                        default:
+                            context.Response.StatusCode = 404;
+                            context.Response.Close();
+                            break;
+                    }
+                });
+
+                thread.Start();
+            }
+
+            capture.Release();
+            Console.WriteLine("Bye");
+            return;
+        }
+    }
 }
 
-Console.WriteLine("Bye");
-
-void Console_CancelKeyPress(object? sender, ConsoleCancelEventArgs e)
-{
-    running = false;
-}

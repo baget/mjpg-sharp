@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "MJPG-Sharp": {
+      "commandName": "Project"
+    },
+    "Different Port": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 8000"
+    }
+  }
+}
