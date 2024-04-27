@@ -36,8 +36,8 @@ This project implements an MJPEG streamer using C# and OpenCvSharp. It allows yo
 
 ### Command Line
 
-`--port / -p` - Set http port to listen to
-`--index / -i` - Set camera index number
+- `--port / -p` - Set http port to listen to
+- `--index / -i` - Set camera index number
 
 ### Running as Non Elevated Admin
 https://stackoverflow.com/questions/4019466/httplistener-access-denied
