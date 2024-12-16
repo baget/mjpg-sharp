@@ -114,6 +114,7 @@ namespace MJPG_Sharp
                                 // Send response
                                 context.Response.ContentType = "image/jpeg";
                                 context.Response.OutputStream.Write(jpegBytes);
+                                context.Response.Close();                                
                                 break;
                             }
 
